@@ -140,8 +140,7 @@ int cam_ctx_queue_buffer(cam_ctx *ctx, int index)
 	if(ioctl(ctx->fd, VIDIOC_QBUF, &ctx->bufferinfo) < 0){
     	perror("VIDIOC_QBUF");
     	return -1;
-	}
-	
+	}	
 	return 0;
 }
 

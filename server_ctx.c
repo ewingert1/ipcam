@@ -106,7 +106,7 @@ void send_mesg(server_ctx *ctx, uint8_t opcode, uint8_t *data, uint16_t length)
 	{
 		memcpy(send_buffer + sizeof(mesg_header), data, length);
 	}
-	printf("SEND OPCODE %x\n", opcode);
+	//printf("SEND OPCODE %x\n", opcode);
 	
 	// Decommenter pour debug des messages
 	/*for(int bla=0; bla<sizeof(mesg_header) + length; bla++)

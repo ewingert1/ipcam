@@ -15,7 +15,7 @@ void taskmain(int argc, char **argv)
 	cam_ctx *ctx;
 
 	buf = 0;
-	nb_buf = 3;
+	nb_buf = 1;
 	
 	//signal(SIGINT, irq_handler);
 	
@@ -40,8 +40,6 @@ void taskmain(int argc, char **argv)
 			continue;
 		}
 		
-		
-		
 		cam_ctx_stream_on(ctx);
 		for(buf=0; buf<nb_buf; ++buf)
 			cam_ctx_queue_buffer(ctx, buf);
@@ -49,31 +47,40 @@ void taskmain(int argc, char **argv)
 		gettimeofday(&tv1, NULL);		
 		buf = 0;
 		while(running){
+			puts("1");
     		if(cam_ctx_dequeue_buffer(ctx, buf%nb_buf) == 0)
     		{
     			gettimeofday(&tv2, NULL);
     			printf("fps = %f\n", 1000000./((tv2.tv_sec*1000000 + tv2.tv_usec) - (tv1.tv_sec*1000000 + tv1.tv_usec)));
     			gettimeofday(&tv1, NULL);    	
+    			puts("2");
     			// handle ctx->buffers[buf]
-    			send_frame(ctx->serv, ctx->buffers[buf], ctx->buffer_size);    	
-    			getchar();
+    			send_frame(ctx->serv, ctx->buffers[buf%nb_buf], ctx->buffer_size);    	
+    			//getchar();
+    			puts("3");
     		}    	
     		cam_ctx_queue_buffer(ctx, buf%nb_buf);
+    		puts("4");
     		buf++;
+    		puts("5");
     		// check for stop stream (non blocking)
     		gonogo = channbrecvul(ctx->chan);
+			puts("6");
 			if(gonogo != STOP_STREAM) 
     		{
+    			puts("7");
     			// on a envoye une frame => on peut traiter une requete et reprendre
     			cam_ctx_handle_client_msg(ctx, gonogo);	
     		}
     		else
     		{
     			// C'est une requete de stop stream => on casse et on attend la prochaine requete
+    			puts("8");
     			break;
     		}
-    		
+    		puts("9");
     		taskdelay(1);
+    		puts("10");
 		}
 		puts("On a stopped le stream");
 		cam_ctx_stream_off(ctx);
