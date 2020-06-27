@@ -20,7 +20,7 @@
 #define PORT 5656
 
 #define BUFFER_SIZE	65536
-#define FRAME_CHUNK	60000
+#define FRAME_CHUNK	1400
 
 typedef struct _server_ctx
 {

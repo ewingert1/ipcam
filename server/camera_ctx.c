@@ -1,6 +1,6 @@
 #include "camera_ctx.h"
 
-cam_ctx *cam_ctx_create()
+cam_ctx *cam_create()
 {
 	cam_ctx* tmp = (cam_ctx*)malloc(sizeof(cam_ctx));
 	if(tmp == NULL)
@@ -21,7 +21,7 @@ cam_ctx *cam_ctx_create()
 	return tmp;
 }
 
-void cam_ctx_destroy(cam_ctx *ctx)
+void cam_destroy(cam_ctx *ctx)
 {
 	for(int i=0; i<ctx->nb_buffers; ++i)
 		munmap(ctx->buffers[i], ctx->buffer_size);
@@ -30,7 +30,7 @@ void cam_ctx_destroy(cam_ctx *ctx)
 	free(ctx);
 }
 
-void cam_ctx_open_device(cam_ctx *ctx, const char* filename)
+void cam_open_device(cam_ctx *ctx, const char* filename)
 {
 	// Ouverture du device en RDWR (WR pour le mmap)
     if((ctx->fd = open(filename, O_RDWR)) < 0){
@@ -47,12 +47,12 @@ void cam_ctx_open_device(cam_ctx *ctx, const char* filename)
 	}
 }
 
-void cam_ctx_close_device(cam_ctx *ctx)
+void cam_close_device(cam_ctx *ctx)
 {
 	close(ctx->fd);
 }
 
-void cam_ctx_set_pixel_format(cam_ctx *ctx, int pix_format, int width, int height)
+void cam_set_pixel_format(cam_ctx *ctx, int pix_format, int width, int height)
 {
 	ctx->width = width;
 	ctx->height = height;
@@ -67,7 +67,7 @@ void cam_ctx_set_pixel_format(cam_ctx *ctx, int pix_format, int width, int heigh
 	}
 } 
 
-void cam_ctx_set_framerate(cam_ctx *ctx, int fps)
+void cam_set_framerate(cam_ctx *ctx, int fps)
 {
 	ctx->fps = fps;
 	
@@ -80,7 +80,7 @@ void cam_ctx_set_framerate(cam_ctx *ctx, int fps)
 	}
 } 
 
-void cam_ctx_allocate_buffers(cam_ctx *ctx, int nb_buffers)
+void cam_allocate_buffers(cam_ctx *ctx, int nb_buffers)
 {
 	int i = 0;
 	struct v4l2_requestbuffers bufrequest;
@@ -133,7 +133,7 @@ void cam_ctx_allocate_buffers(cam_ctx *ctx, int nb_buffers)
 	ctx->buffer_size = ctx->bufferinfo.length;
 }
 
-int cam_ctx_queue_buffer(cam_ctx *ctx, int index)
+int cam_queue_buffer(cam_ctx *ctx, int index)
 {
 	ctx->bufferinfo.index = index; 
 		
@@ -144,7 +144,7 @@ int cam_ctx_queue_buffer(cam_ctx *ctx, int index)
 	return 0;
 }
 
-int cam_ctx_dequeue_buffer(cam_ctx *ctx, int index)
+int cam_dequeue_buffer(cam_ctx *ctx, int index)
 {
 	ctx->bufferinfo.index = index; 
 
@@ -156,7 +156,7 @@ int cam_ctx_dequeue_buffer(cam_ctx *ctx, int index)
     return 0;
 }
 
-void cam_ctx_stream_on(cam_ctx *ctx)
+void cam_stream_on(cam_ctx *ctx)
 {
 	if(ioctl(ctx->fd, VIDIOC_STREAMON, &ctx->bufferinfo.type) < 0){
     	perror("VIDIOC_STREAMON");
@@ -164,7 +164,7 @@ void cam_ctx_stream_on(cam_ctx *ctx)
 	}
 }
 
-void cam_ctx_stream_off(cam_ctx *ctx)
+void cam_stream_off(cam_ctx *ctx)
 {
 	if(ioctl(ctx->fd, VIDIOC_STREAMOFF, &ctx->bufferinfo.type) < 0){
     	perror("VIDIOC_STREAMOFF");
@@ -172,12 +172,12 @@ void cam_ctx_stream_off(cam_ctx *ctx)
 	}
 } 
 
-void cam_ctx_start_serv(cam_ctx *ctx)
+void cam_start_serv(cam_ctx *ctx)
 {
 	taskcreate(servertask, (void*)ctx->serv, STACK);
 }
 
-void cam_ctx_handle_client_msg(cam_ctx *ctx, uint64_t client_msg)
+void cam_handle_client_msg(cam_ctx *ctx, uint64_t client_msg)
 {
 	client_mesg *msg = (client_mesg*)&client_msg;
 	uint8_t new_fps;

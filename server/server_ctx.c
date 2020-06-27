@@ -1,7 +1,5 @@
 #include "server_ctx.h"
 
-
-
 typedef void (*mesg_handler)(server_ctx *ctx, uint8_t*,uint16_t);
 
 uint8_t send_buffer[BUFFER_SIZE];
@@ -15,23 +13,6 @@ void handle_setresolution_msg		(server_ctx *ctx, uint8_t *data, uint16_t length)
 void handle_startstream_msg			(server_ctx *ctx, uint8_t *data, uint16_t length);
 void handle_stopstream_msg			(server_ctx *ctx, uint8_t *data, uint16_t length);
 void handle_getresolution_msg		(server_ctx *ctx, uint8_t *data, uint16_t length);
-
-#pragma pack(1)
-typedef struct _mesg_header
-{
-	uint8_t opcode;
-	uint16_t length;
-} mesg_header;
-#pragma pack(0)
-
-#pragma pack(1)
-typedef struct _frame_header
-{
-	uint16_t seq_number;
-	uint16_t chunk_len;
-	uint32_t total_len;
-} frame_header;
-#pragma pack(0)
 
 // Handler des client messages
 mesg_handler handlers[] =
@@ -133,10 +114,9 @@ void send_frame(server_ctx *ctx, uint8_t *ptr, uint32_t length)
 		hdr->chunk_len = (i != nb_chunks-1) ? FRAME_CHUNK : bytes_remaining;
 		bytes_remaining -= hdr->chunk_len;
 		memcpy(frame_buffer + sizeof(frame_header), ptr + i*FRAME_CHUNK, hdr->chunk_len + sizeof(frame_header));
-		printf("seq=%d;chnk_len=%d;bytes_remaining=%d\n", hdr->seq_number, hdr->chunk_len, bytes_remaining);
+		//printf("seq=%d;chnk_len=%d;bytes_remaining=%d\n", hdr->seq_number, hdr->chunk_len, bytes_remaining);
 		send_mesg(ctx, FRAME, frame_buffer, hdr->chunk_len+sizeof(frame_header));
 	}
-	send_mesg(ctx, FRAME_DONE, NULL, 0);
 }
 
 void handle_mesg(server_ctx *ctx, uint8_t *mesg, uint16_t len)

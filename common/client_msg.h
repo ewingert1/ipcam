@@ -1,5 +1,7 @@
 #include <stdint.h>
 
+// This file contains all messages sent by the camera client to the server
+
 #define HELLO 				0
 #define BYE 				1
 #define SET_FRAMERATE		2
