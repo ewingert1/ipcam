@@ -2,7 +2,7 @@
 
 typedef void (*mesg_handler)(server_ctx *ctx, uint8_t*,uint16_t);
 
-uint8_t send_buffer[BUFFER_SIZE];
+uint8_t send_buffer[1048576];
 uint8_t recv_buffer[BUFFER_SIZE];
 uint8_t frame_buffer[FRAME_CHUNK];
 
@@ -71,13 +71,13 @@ void handle_getresolution_msg(server_ctx *ctx, uint8_t *data, uint16_t length)
 }
 
 // y'a certainement des optis a faire ici
-void send_mesg(server_ctx *ctx, uint8_t opcode, uint8_t *data, uint16_t length)
+void send_mesg(server_ctx *ctx, uint8_t opcode, uint8_t *data, uint64_t length)
 {
-	if(length > BUFFER_SIZE - sizeof(mesg_header))
+	/*if(length > BUFFER_SIZE - sizeof(mesg_header))
 	{
 		printf("Error : message length too long\n");
 		return;
-	}
+	}*/
 	
 	mesg_header *hdr = (mesg_header*)send_buffer;
 	hdr->opcode = opcode;
@@ -87,7 +87,8 @@ void send_mesg(server_ctx *ctx, uint8_t opcode, uint8_t *data, uint16_t length)
 	{
 		memcpy(send_buffer + sizeof(mesg_header), data, length);
 	}
-	//printf("SEND OPCODE %x\n", opcode);
+	printf("SEND OPCODE = %x\n", opcode);
+	printf("SEND LENGTH = %llu\n", length);
 	
 	// Decommenter pour debug des messages
 	/*for(int bla=0; bla<sizeof(mesg_header) + length; bla++)
@@ -96,12 +97,15 @@ void send_mesg(server_ctx *ctx, uint8_t opcode, uint8_t *data, uint16_t length)
 	}
 	printf("\n");*/
 	
-	sendto(ctx->fd, send_buffer, sizeof(mesg_header) + length, 0, &ctx->from, ctx->fromlen);
+	
+	fdwrite(ctx->fd, send_buffer, sizeof(mesg_header) + length);
+	// sendto(ctx->fd, send_buffer, sizeof(mesg_header) + length, 0, &ctx->from, ctx->fromlen);
 }
 
-void send_frame(server_ctx *ctx, uint8_t *ptr, uint32_t length)
+void send_frame(server_ctx *ctx, uint8_t *ptr, uint64_t length)
 {
-	uint32_t bytes_remaining, nb_chunks;
+	send_mesg(ctx, FRAME, ptr, length);
+	/*uint32_t bytes_remaining, nb_chunks;
 	frame_header* hdr = (frame_header*)frame_buffer; 
 	
 	bytes_remaining = length;
@@ -116,10 +120,10 @@ void send_frame(server_ctx *ctx, uint8_t *ptr, uint32_t length)
 		memcpy(frame_buffer + sizeof(frame_header), ptr + i*FRAME_CHUNK, hdr->chunk_len + sizeof(frame_header));
 		//printf("seq=%d;chnk_len=%d;bytes_remaining=%d\n", hdr->seq_number, hdr->chunk_len, bytes_remaining);
 		send_mesg(ctx, FRAME, frame_buffer, hdr->chunk_len+sizeof(frame_header));
-	}
+	}*/
 }
 
-void handle_mesg(server_ctx *ctx, uint8_t *mesg, uint16_t len)
+void handle_mesg(server_ctx *ctx, uint8_t *mesg)
 {
 	mesg_header* hdr;
 	
@@ -144,7 +148,6 @@ server_ctx* server_ctx_create(Channel *Chan)
 		// TBD exit properly
 		exit(EXIT_FAILURE);
 	}
-	tmp->fromlen = sizeof(struct sockaddr_in);
 	tmp->chan = Chan; //alloue au dessus (cam_ctx)
 	printf("chan (create server) = %x",tmp->chan);
 	return tmp;
@@ -158,35 +161,100 @@ void server_ctx_destroy(server_ctx *ctx)
 void server_ctx_start(server_ctx *ctx, uint16_t port)
 {
 	struct sockaddr_in me = {0};
-	/* if((ctx->fd = netannounce(UDP, 0, port)) < 0){
+	if((ctx->fd_serv = netannounce(TCP, 0, port)) < 0){
 		fprintf(stderr, "cannot announce on udp port %d: %s\n", port, strerror(errno));
 		taskexitall(1);
 	}	
-	if(fdnoblock(ctx->fd) < 0){
+	
+	/*if(fdnoblock(ctx->fd) < 0){
 		fprintf(stderr, "fdnoblock\n");
 		taskexitall(1);
 	}*/	
 	
-	ctx->fd = socket(AF_INET, SOCK_DGRAM, 0);
+	/*ctx->fd = socket(AF_INET, SOCK_STREAM, 0);
 	me.sin_family = AF_INET;
 	me.sin_addr.s_addr = INADDR_ANY;
 	me.sin_port = htons(port);
-	bind(ctx->fd, (struct sockaddr*)&me, sizeof(me));
+	bind(ctx->fd, (struct sockaddr*)&me, sizeof(me));*/
+}
+
+int server_read_tcp(server_ctx *ctx)
+{
+	int bytes;
+	uint64_t bytes_read = 0, bytes_remaining = 0;
+	mesg_header *hdr = (mesg_header *)recv_buffer;
+
+	
+	bytes = fdread(ctx->fd, hdr, sizeof(mesg_header));
+	if(bytes <= 0)
+	{
+		printf("Error on socket, closing connection\n");
+		return -1;
+	}
+	
+	bytes_remaining = hdr->length;
+	
+	while(bytes_read < bytes_remaining)
+	{
+		bytes = fdread(ctx->fd, recv_buffer + sizeof(mesg_header) + bytes_read, bytes_remaining);
+		if(bytes <= 0)
+		{
+			printf("Error on socket, closing connection\n");
+			return -1;
+		}
+		bytes_read += bytes;
+		bytes_remaining -= bytes;
+	}
+	
+	if(bytes_read != hdr->length)
+	{
+		printf("Error, number of bytes unexpected, closing connection\n");
+		return -1;
+	}
+	
+	printf("TCP read succesful");
+	return 0;
 }
 
 void server_ctx_mainloop(server_ctx *ctx)
 {
 	int bytes;
-
+	char client_addr[16];
+	int client_port;
+		
 	while(1)
 	{
-		fdwait(ctx->fd, 'r');
-		printf("srv chan (servertask before recv) = %x\n",ctx->chan);
-		bytes = recvfrom(ctx->fd, recv_buffer, sizeof(recv_buffer), 0, &ctx->from, &ctx->fromlen);
-		printf("srv chan (servertask after recv) = %x\n",ctx->chan);
-		printf("bytes read = %d\n", bytes);
-		handle_mesg(ctx, recv_buffer, bytes);
-		printf("srv chan (servertask after handle) = %x\n",ctx->chan);
+	
+		printf("accepting\n");
+		ctx->fd = netaccept(ctx->fd_serv, client_addr, &client_port);
+				
+		while(1)
+		{
+			printf("waiting\n");
+			fdwait(ctx->fd, 'r');
+			printf("event detected\n");			
+			if(server_read_tcp(ctx) == 0)
+			{
+				handle_mesg(ctx, recv_buffer);
+				continue;
+			}
+			
+			break;
+			
+			
+			/*printf("srv chan (servertask before recv) = %x\n",ctx->chan);
+			bytes = recvfrom(ctx->fd, recv_buffer, sizeof(recv_buffer), 0, &ctx->from, &ctx->fromlen);
+			printf("srv chan (servertask after recv) = %x\n",ctx->chan);
+			printf("bytes read = %d\n", bytes);
+			handle_mesg(ctx, recv_buffer, bytes);
+			printf("srv chan (servertask after handle) = %x\n",ctx->chan);*/
+		}	
+		
+		handle_stopstream_msg(ctx, NULL, 0);
+		
+		close(ctx->fd);
+		
+		ctx->fd = -1;
 	}
 }
 

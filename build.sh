@@ -1,2 +1,2 @@
-gcc server/*.c -Icommon -o build/cam -ltask
-gcc client/*.c -Icommon -o build/cli -ltask
+gcc server/*.c -Icommon -o cam -ltask
+gcc client/*.c -Icommon -o cli -ltask

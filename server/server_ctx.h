@@ -24,14 +24,13 @@
 
 typedef struct _server_ctx
 {
+	int fd_serv;
 	int fd;
-	struct sockaddr from;
-	socklen_t fromlen;	
 	Channel *chan;
 } server_ctx;
 
 server_ctx* server_ctx_create(Channel *chan);
 void server_ctx_destroy(server_ctx *ctx);
-void send_mesg(server_ctx *ctx, uint8_t opcode, uint8_t *data, uint16_t length);
-void send_frame(server_ctx *ctx, uint8_t *ptr, uint32_t length);
+void send_mesg(server_ctx *ctx, uint8_t opcode, uint8_t *data, uint64_t length);
+void send_frame(server_ctx *ctx, uint8_t *ptr, uint64_t length);
 void servertask(void *arg);

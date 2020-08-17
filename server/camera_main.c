@@ -15,19 +15,20 @@ void taskmain(int argc, char **argv)
 	cam_ctx *ctx;
 
 	buf = 0;
-	nb_buf = 4;
+	nb_buf = 1;
 	
 	//signal(SIGINT, irq_handler);
 	
 	ctx = cam_create();
 	cam_start_serv(ctx);
 	// Laisser du temps au serveur pour s'init et attendre
-	taskyield();
+	taskdelay(1);
+	//taskyield();
 	
 	// TBD : conf
-	cam_open_device(ctx, "/dev/video3");
+	cam_open_device(ctx, "/dev/video4");
 	cam_set_pixel_format(ctx, V4L2_PIX_FMT_YUYV, 640, 480);
-	cam_set_framerate(ctx, 20);	
+	cam_set_framerate(ctx, 10);	
 	cam_allocate_buffers(ctx, nb_buf);
 		
 	while(running){

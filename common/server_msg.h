@@ -13,7 +13,7 @@
 typedef struct _mesg_header
 {
 	uint8_t opcode;
-	uint16_t length;
+	uint64_t length;
 } mesg_header;
 #pragma pack(0)
 
